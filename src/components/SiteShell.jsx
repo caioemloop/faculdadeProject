@@ -7,7 +7,7 @@ const links = [
   { to: '/painel', label: 'Painel', icon: FiGrid },
 ]
 
-export default function SiteShell({ children }) {
+export default function SiteShell({ shop, children }) {
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
       <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[rgba(7,7,7,0.82)] backdrop-blur-xl">
@@ -18,7 +18,7 @@ export default function SiteShell({ children }) {
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.45em] text-[var(--muted)]">barber booking</p>
-              <p className="text-lg font-black uppercase tracking-[0.08em] text-[var(--text)]">Emerson Barber Shop</p>
+              <p className="text-lg font-black uppercase tracking-[0.08em] text-[var(--text)]">{shop?.name}</p>
             </div>
           </Link>
 
@@ -56,14 +56,14 @@ export default function SiteShell({ children }) {
       <footer className="border-t border-[var(--line)] bg-[rgba(10,10,10,0.95)]">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8 md:flex-row md:items-center md:justify-between md:px-8">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--accent)]">Emerson Barber Shop</p>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--accent)]">{shop?.name}</p>
             <p className="mt-2 max-w-xl text-sm text-[var(--muted)]">
-              Agenda online, catálogo de serviços e visão administrativa em um único front com dados mockados.
+              Agenda online, catálogo de serviços e visão administrativa ligados ao banco de dados.
             </p>
           </div>
           <div className="text-sm text-[var(--muted)]">
-            <p>Atendimento de terça a sábado, das 9h às 20h.</p>
-            <p>Rua da Saboaria, 103 • Boa Vista de Sao Caetano, Salvador - BA</p>
+            <p>{shop?.hours}</p>
+            <p>{shop?.address}</p>
           </div>
         </div>
       </footer>

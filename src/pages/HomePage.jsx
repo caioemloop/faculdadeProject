@@ -5,9 +5,8 @@ import {
   FiClock,
   FiMapPin,
   FiShield,
-  FiStar,
 } from 'react-icons/fi'
-import { formatCurrency, highlights, testimonials } from '../data/mockData.js'
+import { formatCurrency, formatLongDate, todayKey } from '../lib/format.js'
 
 const valueProps = [
   {
@@ -27,9 +26,19 @@ const valueProps = [
   },
 ]
 
-export default function HomePage({ services, barbers, appointments }) {
+export default function HomePage({ services, barbers, appointments, nextSlot }) {
   const activeAppointments = appointments.filter((item) => item.status !== 'cancelado')
-  const topServices = services.slice(0, 4)
+  const today = todayKey()
+  const upcoming = activeAppointments
+    .filter((item) => item.date >= today)
+    .sort((left, right) => `${left.date} ${left.time}`.localeCompare(`${right.date} ${right.time}`))
+    .slice(0, 4)
+  const highlights = [
+    { value: String(barbers.length), label: 'barbeiros em escala' },
+    { value: String(services.length), label: 'serviços no catálogo' },
+    { value: String(activeAppointments.length), label: 'reservas ativas' },
+    { value: nextSlot?.time ?? '—', label: 'próximo horário livre' },
+  ]
 
   return (
     <div className="space-y-8 md:space-y-10">
@@ -49,7 +58,7 @@ export default function HomePage({ services, barbers, appointments }) {
                 Agenda enxuta para quem quer lotar a cadeira sem perder o controle.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-[var(--muted)] md:text-lg">
-                Um front pensado para barbearia: escolha rápida de serviço, barbeiro e horário, com visual forte e painel de acompanhamento em tempo real com dados mockados.
+                Escolha o serviço, o barbeiro e um horário livre. A reserva fica gravada e o painel acompanha a operação.
               </p>
             </div>
 
@@ -65,7 +74,7 @@ export default function HomePage({ services, barbers, appointments }) {
                 to="/painel"
                 className="inline-flex items-center gap-2 rounded-full border border-[var(--line-strong)] bg-[rgba(15,15,15,0.8)] px-6 py-3 text-sm font-semibold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                Ver painel demo
+                Ver painel
               </Link>
             </div>
           </div>
@@ -92,8 +101,14 @@ export default function HomePage({ services, barbers, appointments }) {
 
             <div className="mt-6 rounded-2xl border border-[var(--line)] bg-[rgba(245,197,24,0.05)] p-4">
               <p className="text-sm font-semibold text-[var(--text)]">Próximo encaixe livre</p>
-              <p className="mt-2 text-2xl font-black text-[var(--accent)]">Hoje às 16:30</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">{activeAppointments.length} reservas ativas espalhadas nos próximos dias.</p>
+              <p className="mt-2 text-2xl font-black text-[var(--accent)]">
+                {nextSlot ? `${formatLongDate(nextSlot.date)} às ${nextSlot.time}` : 'Agenda cheia'}
+              </p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                {nextSlot
+                  ? `${nextSlot.barberName} • ${activeAppointments.length} reservas ativas.`
+                  : 'Nenhum horário livre nos próximos 14 dias.'}
+              </p>
             </div>
           </div>
         </div>
@@ -124,7 +139,7 @@ export default function HomePage({ services, barbers, appointments }) {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {topServices.map((service) => (
+            {services.map((service) => (
               <article key={service.id} className="panel-edge rounded-[1.5rem] border border-[var(--line)] bg-[var(--panel)] p-5">
                 <div className="flex items-start justify-between gap-4">
                   <span className="rounded-full border border-[var(--line-strong)] bg-[rgba(245,197,24,0.08)] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent)]">
@@ -175,22 +190,28 @@ export default function HomePage({ services, barbers, appointments }) {
 
       <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="panel-edge rounded-[1.75rem] border border-[var(--line)] bg-[var(--panel)] p-6">
-          <p className="text-xs uppercase tracking-[0.25em] text-[var(--accent)]">prova social</p>
-          <h2 className="mt-3 text-3xl font-black uppercase text-[var(--text)]">Experiência pensada para cliente e operação.</h2>
+          <p className="text-xs uppercase tracking-[0.25em] text-[var(--accent)]">agenda</p>
+          <h2 className="mt-3 text-3xl font-black uppercase text-[var(--text)]">Próximas reservas gravadas.</h2>
           <div className="mt-6 space-y-4">
-            {testimonials.map((item) => (
-              <blockquote key={item.id} className="rounded-[1.4rem] border border-[var(--line)] bg-[rgba(255,255,255,0.02)] p-5">
-                <div className="flex items-center gap-1 text-[var(--accent)]">
-                  <FiStar size={15} />
-                  <FiStar size={15} />
-                  <FiStar size={15} />
-                  <FiStar size={15} />
-                  <FiStar size={15} />
-                </div>
-                <p className="mt-4 text-sm leading-7 text-[var(--text)]">“{item.quote}”</p>
-                <footer className="mt-4 text-sm font-semibold text-[var(--muted)]">{item.name}</footer>
-              </blockquote>
-            ))}
+            {upcoming.length === 0 && (
+              <p className="text-sm text-[var(--muted)]">Nenhuma reserva ativa a partir de hoje.</p>
+            )}
+            {upcoming.map((appointment) => {
+              const service = services.find((item) => item.id === appointment.serviceId)
+              const barber = barbers.find((item) => item.id === appointment.barberId)
+
+              return (
+                <article key={appointment.id} className="rounded-[1.4rem] border border-[var(--line)] bg-[rgba(255,255,255,0.02)] p-5">
+                  <p className="text-lg font-black uppercase text-[var(--text)]">{appointment.clientName}</p>
+                  <p className="mt-2 text-sm text-[var(--muted)]">
+                    {formatLongDate(appointment.date)} às {appointment.time}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    {service?.name} com {barber?.name}
+                  </p>
+                </article>
+              )
+            })}
           </div>
         </div>
 
@@ -201,7 +222,7 @@ export default function HomePage({ services, barbers, appointments }) {
             {[
               'Cliente escolhe o serviço com duração e valor já visíveis.',
               'Seleciona o barbeiro e vê apenas horários realmente livres.',
-              'Painel acompanha status, ticket e ocupação com dados mockados.',
+              'O painel lê a agenda gravada: status, ticket e ocupação.',
             ].map((step, index) => (
               <div key={step} className="rounded-[1.4rem] border border-[var(--line)] bg-[rgba(255,255,255,0.02)] p-5">
                 <p className="text-4xl font-black text-[var(--accent)]">0{index + 1}</p>

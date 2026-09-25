@@ -1,0 +1,40 @@
+name: emerson-barber
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: emerson-barber-db
+    environment:
+      POSTGRES_USER: barber
+      POSTGRES_PASSWORD: barber_pex3
+      POSTGRES_DB: emerson_barber
+      TZ: America/Bahia
+      PGTZ: America/Bahia
+    ports:
+      - "127.0.0.1:5437:5432"
+    volumes:
+      - emerson_barber_pg:/var/lib/postgresql/data
+      - ./server/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barber -d emerson_barber"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  api:
+    build: ./server
+    container_name: emerson-barber-api
+    environment:
+      PORT: 4107
+      DATABASE_URL: postgres://barber:barber_pex3@db:5432/emerson_barber
+      TZ: America/Bahia
+    ports:
+      - "127.0.0.1:4107:4107"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  emerson_barber_pg:

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FiCalendar, FiCheckCircle, FiClock, FiDollarSign, FiTrendingUp } from 'react-icons/fi'
-import { formatCurrency, formatLongDate, statusLabels } from '../data/mockData.js'
+import { formatCurrency, formatLongDate, statusLabels, todayKey } from '../lib/format.js'
 
 const statusStyles = {
   confirmado: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-300',
@@ -9,8 +9,10 @@ const statusStyles = {
   cancelado: 'border-rose-500/30 bg-rose-500/12 text-rose-200',
 }
 
-export default function AdminPage({ services, barbers, appointments }) {
+export default function AdminPage({ services, barbers, appointments, onUpdateStatus }) {
   const [filter, setFilter] = useState('todos')
+  const [updatingId, setUpdatingId] = useState(null)
+  const [actionError, setActionError] = useState('')
 
   const filteredAppointments =
     filter === 'todos'
@@ -29,8 +31,8 @@ export default function AdminPage({ services, barbers, appointments }) {
     return total + (service?.price ?? 0)
   }, 0)
 
-  const todayKey = '2026-03-13'
-  const todayQueue = appointments.filter((appointment) => appointment.date === todayKey && appointment.status !== 'cancelado')
+  const today = todayKey()
+  const todayQueue = appointments.filter((appointment) => appointment.date === today && appointment.status !== 'cancelado')
   const confirmedCount = appointments.filter((appointment) => appointment.status === 'confirmado').length
   const pendingCount = appointments.filter((appointment) => appointment.status === 'pendente').length
 
@@ -54,12 +56,12 @@ export default function AdminPage({ services, barbers, appointments }) {
             <p className="text-xs font-bold uppercase tracking-[0.26em] text-[var(--accent)]">painel administrativo</p>
             <h1 className="mt-3 text-4xl font-black uppercase text-[var(--text)]">Leitura rápida da operação</h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-              Visão de agendamentos, ocupação e ticket potencial com os mesmos dados mockados usados no fluxo do cliente.
+              Visão de agendamentos, ocupação e ticket potencial lidos direto do banco.
             </p>
           </div>
           <div className="rounded-[1.5rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-5 py-4 text-sm text-[var(--muted)]">
-            <p className="font-semibold text-[var(--text)]">Base simulada atual</p>
-            <p className="mt-2">{formatLongDate(todayKey)}</p>
+            <p className="font-semibold text-[var(--text)]">Dia de operação</p>
+            <p className="mt-2">{formatLongDate(today)}</p>
           </div>
         </div>
 
@@ -101,6 +103,8 @@ export default function AdminPage({ services, barbers, appointments }) {
               </span>
             </div>
 
+            {actionError && <p className="mt-4 text-sm text-rose-300">{actionError}</p>}
+
             <div className="mt-5 space-y-4">
               {orderedAppointments.length === 0 && (
                 <div className="rounded-[1.4rem] border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-4 py-8 text-center text-sm text-[var(--muted)]">
@@ -129,6 +133,21 @@ export default function AdminPage({ services, barbers, appointments }) {
                       <PanelInfo label="Hora" value={appointment.time} />
                       <PanelInfo label="Ticket" value={service ? formatCurrency(service.price) : '—'} />
                     </div>
+                    <StatusActions
+                      appointment={appointment}
+                      disabled={updatingId === appointment.id}
+                      onChange={async (status) => {
+                        setActionError('')
+                        setUpdatingId(appointment.id)
+                        try {
+                          await onUpdateStatus(appointment.id, status)
+                        } catch (error) {
+                          setActionError(error.message)
+                        } finally {
+                          setUpdatingId(null)
+                        }
+                      }}
+                    />
                   </article>
                 )
               })}
@@ -144,6 +163,9 @@ export default function AdminPage({ services, barbers, appointments }) {
             </div>
             <h2 className="mt-3 text-2xl font-black uppercase text-[var(--text)]">Hoje na agenda</h2>
             <div className="mt-5 space-y-3">
+              {todayQueue.length === 0 && (
+                <p className="text-sm text-[var(--muted)]">Nenhuma reserva ativa para hoje.</p>
+              )}
               {todayQueue.map((appointment) => {
                 const service = services.find((item) => item.id === appointment.serviceId)
                 const barber = barbers.find((item) => item.id === appointment.barberId)
@@ -206,6 +228,34 @@ export default function AdminPage({ services, barbers, appointments }) {
           </div>
         </div>
       </section>
+    </div>
+  )
+}
+
+function StatusActions({ appointment, disabled, onChange }) {
+  if (appointment.status === 'concluido' || appointment.status === 'cancelado') {
+    return null
+  }
+
+  const actions = [
+    appointment.status === 'pendente' ? ['confirmado', 'Confirmar'] : null,
+    ['concluido', 'Concluir'],
+    ['cancelado', 'Cancelar'],
+  ].filter(Boolean)
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {actions.map(([status, label]) => (
+        <button
+          key={status}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(status)}
+          className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
